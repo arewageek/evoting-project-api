@@ -1,15 +1,15 @@
-import express, { type Express, type Request, type Response } from "express";
+import express, { type Request, type Response } from "express";
 import bodyParser from "body-parser";
 import { Web3 } from "web3";
-import BlocVote from "./abi/BlocVote.json";
-import ContractFactory from "./abi/ContractFactory.json";
+// import BlocVote from "./abi/BlocVote.json";
+// import ContractFactory from "./abi/ContractFactory.json";
 
 interface VoteInterface {
   voter: string;
   candidate: string;
 }
 
-const app: Express = express();
+const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(bodyParser.urlencoded({ extended: true }));
