@@ -1,19 +1,24 @@
-import Web3 from "web3";
-
-const privateKey = process.env.PRIVATE_KEY;
-const rpcUrl = process.env.SEPOLIA_RPCURL;
-
-const web3 = new Web3.HttpProvider(rpcUrl);
-
-export interface VoteInterface {
-  voter: number;
-  votes: {
-    office: number;
-    candidate: number;
-  }[];
-  timestamp: number;
+// api interfaces
+export interface RegisterCandidateRequest {
+  name: string;
+  officeId: number;
 }
 
-async function recordVote(data: VoteInterface) {
-  return true;
+export interface CastVoteRequest {
+  voter: string;
+  candidate: string;
+}
+
+export interface CandidateResultResponse {
+  result: number;
+}
+
+export interface GetResultResponse {
+  results: Result[];
+}
+
+export interface Result {
+  candidateId: number;
+  officeId: number;
+  votes: number;
 }
