@@ -15,13 +15,16 @@ app.use(bodyParser.urlencoded({ extended: false }));
 
 let factory: any;
 let blocVote: any;
-const rpc = process.env.QUICKNODE_RPC_URL!;
+const rpc = process.env.INFURA_RPC_URL!;
 const deployer = process.env.DEPLOYER!;
 const bvAddy = process.env.BLOCVOTE_CA!;
 const privateKey = process.env.PRIVATE_KEY!;
 
 const provider = new Web3.providers.HttpProvider(rpc);
 const web3 = new Web3(provider);
+
+web3.eth.wallet?.add(privateKey);
+
 try {
   // console.log(deployer, bvAddy);
 
@@ -29,22 +32,21 @@ try {
 
   // contract factory declaration
 
-  const contractFactoryAddress = process.env.CONTRACT_FACTORY_ADDY!;
-  const blocVoteAddress = bvAddy;
+  // const contractFactoryAddress = process.env.CONTRACT_FACTORY_ADDY!;
 
-  factory = new web3.eth.Contract(
-    contractFactoryAbi.abi,
-    contractFactoryAddress,
-    new Web3Context(rpc)
-  );
+  // factory = new web3.eth.Contract(
+  //   contractFactoryAbi.abi,
+  //   contractFactoryAddress,
+  //   new Web3Context(rpc)
+  // );
 
   blocVote = new web3.eth.Contract(
     blocVoteAbi.abi,
-    blocVoteAddress,
+    bvAddy,
     new Web3Context(rpc)
   );
 
-  console.log({ blocVoteAddress, deployer, rpc });
+  console.log({ bvAddy, rpc, deployer, privateKey });
 } catch (error) {
   console.log({ error });
 }
@@ -53,17 +55,18 @@ try {
 
 // cast vote
 app.get("/vote", async (req, res) => {
+  start();
   try {
-    console.log({ methods: blocVote.methods });
+    // console.log({ methods: blocVote.methods });
 
     const bVote = await blocVote.methods
       .castVote(0, 0)
-      .send({ from: deployer });
+      .send({ from: deployer, _candidateId: 0, officeId: 0 });
     console.log({ hash: bVote });
 
     return res.json({ hash: bVote });
   } catch (error) {
-    console.log(error);
+    console.log({ error });
     return res.json({
       message: "An error occurred sending vote",
       error,
@@ -71,31 +74,9 @@ app.get("/vote", async (req, res) => {
   }
 });
 
-// register new office
-
-app.get("/office/new/:office", async (req, res) => {
-  console.log("Processing...");
-  const office = req.params.office;
-  console.log({ office });
-
-  try {
-    const registerOffice = await blocVote.methods
-      .registerOffice(office)
-      .send({ from: deployer, office });
-    console.log({ status: registerOffice });
-
-    return res.json({ valid: "valid" });
-  } catch (error) {
-    console.log(error);
-
-    return res.json({
-      message: "An error occurred registering office",
-    });
-  }
-});
-
+// register a new candidate
 app.get("/candidate/new/:name/:officeId", async (req, res) => {
-  console.log("Processing...");
+  start();
   try {
     const name = req.params.name;
     const office = req.params.officeId;
@@ -118,29 +99,56 @@ app.get("/candidate/new/:name/:officeId", async (req, res) => {
   }
 });
 
+// register new office
+app.get("/office/new/:office", async (req, res) => {
+  start();
+
+  const office = req.params.office;
+  // console.log({ office });
+
+  try {
+    const registerOffice = await blocVote.methods
+      .registerOffice("office")
+      .send({ from: deployer, office: "office" });
+    console.log({ status: registerOffice });
+
+    return res.json({ valid: "valid" });
+  } catch (error) {
+    console.log(error);
+
+    return res.json({
+      message: "An error occurred registering office",
+    });
+  }
+});
+
+// get office data
 app.get("/office/:index", async (req, res) => {
-  console.log("Processing...");
   const index = req.params.index;
   console.log({ index });
+
+  start();
   try {
     // console.log({ methods: blocVote.methods });
     const office = await blocVote.methods
       .offices(index)
-      .send({ from: deployer });
+      .send({ from: deployer, index, gas: 300000 });
 
     const response = { office };
     console.log({ response });
+
     return res.json({ response });
   } catch (error) {
-    console.log(error);
+    console.log({ error });
     return res.json({ message: "Error fetching offices" });
   }
 });
 
 // read current chairman
 app.get("/chairman", async (req, res) => {
+  start();
   try {
-    // console.log({ methods: blocVote.methods });
+    console.log({ methods: blocVote.methods });
     console.log("Processing...");
 
     const chairman = await blocVote.methods.chairman().call();
@@ -158,6 +166,7 @@ app.get("/chairman", async (req, res) => {
 
 // read election result
 app.get("/result", async (req, res) => {
+  start();
   try {
     console.log({ methods: blocVote.methods });
 
@@ -175,25 +184,27 @@ app.get("/result", async (req, res) => {
 });
 
 // initilize the contract
-app.get("/deploy", async (req, res) => {
-  try {
-    console.log({ methods: factory.methods });
+// app.get("/deploy", async (req, res) => {
+//   try {
+//     console.log({ methods: factory.methods });
 
-    const deployed = await factory.methods.deploy().send({ from: deployer });
-    console.log({ hash: deployed });
+//     const deployed = await factory.methods.deploy().send({ from: deployer });
+//     console.log({ hash: deployed });
 
-    return res.json({ hash: deployed.transactionHash });
-  } catch (error) {
-    console.log(error);
-  }
-});
+//     return res.json({ hash: deployed.transactionHash });
+//   } catch (error) {
+//     console.log(error);
+//   }
+// });
 
-app.get("/deployed", async (req, res) => {
-  const contracts = await factory.methods.deployedContracts().call();
-  console.log({ contracts });
-  return res.json({ contracts });
-});
+// app.get("/deployed", async (req, res) => {
+//   const contracts = await factory.methods.deployedContracts().call();
+//   console.log({ contracts });
+//   return res.json({ contracts });
+// });
 
 app.listen(port, () => {
   console.log(`Server listening on port ${port}`);
 });
+
+const start = () => console.log("Processing...");
